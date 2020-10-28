@@ -21,7 +21,7 @@ object LogConvertUtil {
    *
    * @param log
    */
-  def parseLog(log: String)= Row{
+  def parseLog(log: String) = {
     try {
       val splits = log.split("\t")
       val domain = "http://www.imooc.com/"
@@ -34,7 +34,7 @@ object LogConvertUtil {
         cmsId = cms.split("/")(1).toLong
       }
       val ip = splits(3)
-      val flow = splits(2)
+      val flow = splits(2).toLong
       val time = splits(0)
       val day = splits(0).substring(0, 10).replaceAll("-", "")
       val city = ""
