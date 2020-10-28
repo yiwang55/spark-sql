@@ -21,5 +21,7 @@ object HiveMysqlApp {
 
     val joinDF = hiveDF.join(mysqlDF, hiveDF("context")=== mysqlDF("DEPTNO"))
     joinDF.printSchema();
+
+    spark.stop()
   }
 }
