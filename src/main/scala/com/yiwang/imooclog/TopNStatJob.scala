@@ -8,12 +8,12 @@ import scala.collection.mutable.ListBuffer
 
 object TopNStatJob {
 
-  def cityAccessTopNStat(spark: SparkSession, logDF: DataFrame) = {
+  def cityAccessTopNStat(spark: SparkSession, logDF: DataFrame, day:String) = {
     /**
      * DataFrame API方式统计
      */
     import spark.implicits._
-    val result = logDF.filter($"day" === "20170511" && $"cmsType" === "video")
+    val result = logDF.filter($"day" === day && $"cmsType" === "video")
       .groupBy("day", "city", "cmsId")
       .agg(count("cmsId").as("times"))
     //      .show(false)
@@ -45,27 +45,28 @@ object TopNStatJob {
 
   }
 
-  def videoAccessTopNStat(spark: SparkSession, logDF: DataFrame) = {
+  def videoAccessTopNStat(spark: SparkSession, logDF: DataFrame, day:String) = {
     /**
      * DataFrame API方式统计
      */
-    //    import spark.implicits._
-    //    val result = logDF.filter($"day"==="20170511" && $"cmsType"==="video")
-    //      .groupBy("day","cmsId")
-    //      .agg(count("cmsId").as("times"))
-    //      .orderBy($"times".desc)
+    try {
+        import spark.implicits._
+        val result = logDF.filter($"day"===day && $"cmsType"==="video")
+          .groupBy("day","cmsId")
+          .agg(count("cmsId").as("times"))
+          .orderBy($"times".desc)
 
     /**
      * spark sql方式统计
      */
-    try {
-      logDF.createOrReplaceTempView("access_logs")
-      val result = spark.sql("select " +
-        "day,cmsId,count(cmsId) as times   " +
-        "from access_logs " +
-        "where day = '20170511' and cmsType='video'  " +
-        "group by day,cmsId " +
-        "order by times desc")
+//    try {
+//      logDF.createOrReplaceTempView("access_logs")
+//      val result = spark.sql("select " +
+//        "day,cmsId,count(cmsId) as times   " +
+//        "from access_logs " +
+//        "where day = '20170511' and cmsType='video'  " +
+//        "group by day,cmsId " +
+//        "order by times desc")
       //      result.show(false)
       result.foreachPartition(patitionOfRecords => {
         val list = new ListBuffer[DayVideoAccessStat]
@@ -86,6 +87,38 @@ object TopNStatJob {
     }
   }
 
+  def videoFlowAccessTopNStat(spark: SparkSession, logDF: DataFrame, day:String) = {
+    /**
+     * DataFrame API方式统计
+     */
+    import spark.implicits._
+    val result = logDF.filter($"day" === day && $"cmsType" === "video")
+      .groupBy("day", "cmsId")
+      .agg(sum("flow").as("flows"))
+//          .show(false)
+
+    val tableResult = result.select(
+      result("day"),
+      result("cmsId"),
+      result("flows"))
+
+    tableResult.foreachPartition(patitionOfRecords => {
+      val list = new ListBuffer[DayVideoFlowsAccessStat]
+
+      patitionOfRecords.foreach(e => {
+        val day = e.getAs[String]("day")
+        val cmsId = e.getAs[Long]("cmsId")
+        val flows = e.getAs[Long]("flows")
+
+        list.append(DayVideoFlowsAccessStat(day, cmsId, flows))
+      })
+
+      StatDAO.insertDayVideoFlowsAccessTopN(list)
+    })
+
+  }
+
+
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder().appName("TopNStatJob")
       .master("local[2]")
@@ -96,12 +129,17 @@ object TopNStatJob {
 
 //        logDF.printSchema()
 //        logDF.show(10, false)
+    val day = "20170511"
+    StatDAO.deleteData(day)
 
     //最受欢迎的topN课程
-    //    videoAccessTopNStat(spark, logDF)
+    videoAccessTopNStat(spark, logDF, day)
 
     //按照地市来统计topN课程
-    cityAccessTopNStat(spark, logDF)
+    cityAccessTopNStat(spark, logDF, day)
+
+    //按照流量来统计topN课程
+    videoFlowAccessTopNStat(spark, logDF, day)
     spark.stop()
   }
 }

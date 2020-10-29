@@ -8,13 +8,13 @@ import scala.collection.mutable.ListBuffer
  * 各个维度统计的DAO操作
  */
 object StatDAO {
-  def insertDayVideoAccessTopN(list: ListBuffer[DayVideoAccessStat])={
+  def insertDayVideoAccessTopN(list: ListBuffer[DayVideoAccessStat]) = {
     var connection: Connection = null
-    var pstmt:PreparedStatement = null
-    try{
+    var pstmt: PreparedStatement = null
+    try {
       connection = MySQLUtils.getConnection()
 
-      connection.setAutoCommit(false)//设置手动提交
+      connection.setAutoCommit(false) //设置手动提交
 
       pstmt = connection.prepareStatement(
         "insert into day_video_access_topn_stat(day,cms_id,times)" +
@@ -26,23 +26,24 @@ object StatDAO {
 
         pstmt.addBatch()
       }
-      pstmt.executeBatch()//执行批量处理，性能会好很多
-      connection.commit()//手工提交
+      pstmt.executeBatch() //执行批量处理，性能会好很多
+      connection.commit() //手工提交
 
-    }catch {
+    } catch {
       case exception: Exception => exception.printStackTrace()
-    }finally {
+    } finally {
       MySQLUtils.release(connection, pstmt)
     }
 
   }
-  def insertDayCityVideoAccessTopN(list: ListBuffer[DayCityVideoAccessStat])={
+
+  def insertDayCityVideoAccessTopN(list: ListBuffer[DayCityVideoAccessStat]) = {
     var connection: Connection = null
-    var pstmt:PreparedStatement = null
-    try{
+    var pstmt: PreparedStatement = null
+    try {
       connection = MySQLUtils.getConnection()
 
-      connection.setAutoCommit(false)//设置手动提交
+      connection.setAutoCommit(false) //设置手动提交
 
       pstmt = connection.prepareStatement(
         "insert into day_video_city_access_topn_stat(day,cms_id,city,times, times_rank)" +
@@ -56,12 +57,60 @@ object StatDAO {
 
         pstmt.addBatch()
       }
-      pstmt.executeBatch()//执行批量处理，性能会好很多
-      connection.commit()//手工提交
+      pstmt.executeBatch() //执行批量处理，性能会好很多
+      connection.commit() //手工提交
 
-    }catch {
+    } catch {
       case exception: Exception => exception.printStackTrace()
-    }finally {
+    } finally {
+      MySQLUtils.release(connection, pstmt)
+    }
+
+  }
+
+  def insertDayVideoFlowsAccessTopN(list: ListBuffer[DayVideoFlowsAccessStat]) = {
+    var connection: Connection = null
+    var pstmt: PreparedStatement = null
+    try {
+      connection = MySQLUtils.getConnection()
+
+      connection.setAutoCommit(false) //设置手动提交
+
+      pstmt = connection.prepareStatement(
+        "insert into day_video_traffics_topn_stat(day,cms_id,traffics)" +
+          "values(?, ?, ?)")
+      for (elem <- list) {
+        pstmt.setString(1, elem.day)
+        pstmt.setLong(2, elem.cmsId)
+        pstmt.setLong(3, elem.flows)
+
+        pstmt.addBatch()
+      }
+      pstmt.executeBatch() //执行批量处理，性能会好很多
+      connection.commit() //手工提交
+
+    } catch {
+      case exception: Exception => exception.printStackTrace()
+    } finally {
+      MySQLUtils.release(connection, pstmt)
+    }
+  }
+
+  def deleteData(day: String) = {
+    val tables = Array("day_video_access_topn_stat", "day_video_city_access_topn_stat", "day_video_traffics_topn_stat")
+    var connection: Connection = null
+    var pstmt: PreparedStatement = null
+    try {
+      connection = MySQLUtils.getConnection()
+      for (elem <- tables) {
+        pstmt = connection.prepareStatement(
+          s"delete from $elem where day = ?")
+        pstmt.setString(1, day)
+        pstmt.executeUpdate()
+      }
+    } catch {
+      case exception: Exception => exception.printStackTrace()
+    } finally {
       MySQLUtils.release(connection, pstmt)
     }
 
