@@ -37,7 +37,7 @@ object LogConvertUtil {
       val flow = splits(2).toLong
       val time = splits(0)
       val day = splits(0).substring(0, 10).replaceAll("-", "")
-      val city = ""
+      val city = IpUtils.getCity(ip)
 
       //    StructField("url", StringType)
       //    , StructField("cmsType", StringType)
